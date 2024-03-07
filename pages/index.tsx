@@ -10,6 +10,7 @@ export default function Page() {
   const [isWeb3Enabled, setIsWeb3Enabled] = useState(false);
   const { address } = useAccount();
   const chainId = useChainId();
+
   const getListedNfts = async () => {
     const response = await Api.getListedNftPage(0, 10);
     var resData = response.data;
@@ -19,6 +20,7 @@ export default function Page() {
       setListedNfts([]);
     }
   };
+  
   useEffect(() => {
     //@ts-ignore
     if (typeof window.ethereum !== "undefined") {
@@ -42,7 +44,7 @@ export default function Page() {
           listedNfts && listedNfts.length > 0 ? (
             listedNfts.map((nft) => {
               console.log(nft);
-              const { price, nftAddress, tokenId, marketPlaceAddress, seller } =
+              const { price, nftAddress, tokenId, seller } =
                 nft;
               return (
                 <div className="m-2" key={`${nftAddress}${tokenId}`}>
@@ -50,7 +52,6 @@ export default function Page() {
                     price={price}
                     nftAddress={nftAddress}
                     tokenId={tokenId}
-                    marketPlaceAddress={marketPlaceAddress}
                     seller={seller}
                     key={`${nftAddress}${tokenId}`}
                     getListedNfts={getListedNfts}

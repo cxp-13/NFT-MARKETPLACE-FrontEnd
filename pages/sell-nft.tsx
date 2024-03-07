@@ -2,96 +2,83 @@ import styles from "../styles/Home.module.css";
 //@ts-ignore
 import { Form, useNotification, Button } from "@web3uikit/core";
 import { ethers } from "ethers";
-import nftAbi from "../constants/BasicNft.abi.json";
-import nftMarketplaceAbi from "../constants/NftMarketplace.abi.json";
-import networkMapping from "../constants/networkMapping.json";
 import { useEffect, useState } from "react";
-import { useContractWrite, useAccount, useChainId } from "wagmi";
-import { waitForTransaction } from "@wagmi/core";
-import { BigNumber } from "ethers";
+import {
+  useAccount,
+  useChainId,
+  useWriteContract,
+} from "wagmi";
 import { readContract } from "@wagmi/core";
-
-interface NetworkMapping {
-  [key: string]: { NftMarketplace: any[] };
-}
+import { config } from "./_app";
+import BasicNFTJson from "../constants/BasicNft.json";
+import NFTMarketPlaceJson from "../constants/NFTMarketPlace.json";
 
 export default function Home() {
+  const nftMarketAddr = process.env.NEXT_PUBLIC_NFT_MARKET_ADDRESS;
+  const nftAddr = process.env.NEXT_PUBLIC_NFT_ADDRESS;
+
   const [marketplaceAddress, setMarketPlaceAddress] = useState("");
   const [nftPrice, setNftPrice] = useState("");
   const { address: account, isConnected } = useAccount();
 
   let chainId = useChainId();
-
   const dispatch = useNotification();
   const [proceeds, setProceeds] = useState("0");
-
-  const { write: approve } = useContractWrite({
-    async onSuccess(hash, variables) {
-      const transactionReceipt = await waitForTransaction(hash);
-      console.log("transactionReceipt", { transactionReceipt });
-      if (transactionReceipt.status === "success") {
-        if (variables.args) {
-          const nftAddress = variables.address;
-          const tokenId = variables.args[1];
-          handleApproveSuccess(
-            nftAddress!.toString(),
-            tokenId!.toString(),
-            nftPrice
-          );
-        }
-      }
-    },
-    onError(error, variables, context) {
-      console.log(error);
-    },
-  });
+  // 授权NFT
+  const { writeContract: approve } = useWriteContract();
+  // 展示NFT
+  const { writeContract: listNft } = useWriteContract();
+  // 取回售出NFT的全部Token
+  const { writeContract: withDrawProceeds } = useWriteContract();
 
   async function approveAndList(data: any) {
-    // const { hash} = await writeContract()
-    console.log("Approving...");
-    const nftAddress = data.data[0].inputResult;
-    const tokenId = data.data[1].inputResult;
-    const price = ethers.utils
-      .parseUnits(data.data[2].inputResult, "ether")
-      .toString();
-    setNftPrice(price);
-    approve({
-      //@ts-ignore
-      account: account,
-      abi: nftAbi,
-      address: nftAddress,
-      functionName: "approve",
-      args: [marketplaceAddress, tokenId],
-    });
+    // { id: string, data: [{inputName: string; inputResult: string[] | string;}]}
+    // console.log("Approving...");
+    // const nftAddress = data.data[0].inputResult;
+    // const tokenId = data.data[1].inputResult;
+    // setNftPrice(price);
+
+    let tokenId = data.data[0].inputResult;
+    let nftPrice = data.data[1].inputResult;
+    nftPrice = ethers.parseUnits(data.data[2].inputResult, "ether");
+    // 授权
+    approve(
+      {
+        abi: BasicNFTJson.abi,
+        address: nftAddr as `0x${string}`,
+        functionName: "approve",
+        args: [nftMarketAddr, tokenId],
+      },
+      {
+        onSuccess: () => {
+          // 挂单
+          handleApproveSuccess(tokenId, nftPrice);
+        },
+        onError(error, variables, context) {
+          console.log("授权onError", error);
+        },
+        onSettled(data, error, variables, context) {
+          console.log("授权onSettled");
+        },
+      }
+    );
   }
 
-  const { write: listNft } = useContractWrite({
-    onSuccess: async (hash) => {
-      {
-        const transactionReceipt = await waitForTransaction(hash);
-        console.log("transactionReceipt", { transactionReceipt });
-        if (transactionReceipt.status === "success") {
-          handleListSuccess();
-        }
-      }
-    },
-    onError: (error: Error) => console.log(error),
-  });
-
-  function handleApproveSuccess(
-    nftAddress: string,
-    tokenId: string,
-    price: string
-  ) {
+  function handleApproveSuccess(tokenId: string, price: string) {
     console.log("Ok! Now time to list");
-    listNft({
-      //@ts-ignore
-      abi: nftMarketplaceAbi,
-      address: marketplaceAddress,
-      account: account,
-      functionName: "listItem",
-      args: [nftAddress, price, tokenId],
-    });
+    listNft(
+      {
+        abi: NFTMarketPlaceJson.abi,
+        address: nftMarketAddr as `0x${string}`,
+        functionName: "approve",
+        args: [nftAddr, price, tokenId],
+      },
+      {
+        onSuccess: () => {
+          handleListSuccess();
+        },
+      }
+    );
   }
 
   async function handleListSuccess() {
@@ -112,68 +99,45 @@ export default function Home() {
     });
   };
 
-  async function setupUI(marketplaceAddr: `0x${string}`) {
-    const data = await readContract({
-      address: marketplaceAddr,
-      abi: nftMarketplaceAbi,
+  const fetchProceeds = async () => {
+    const result = await readContract(config, {
+      abi: NFTMarketPlaceJson.abi,
+      address: nftMarketAddr as `0x${string}`,
       functionName: "getProceeds",
       args: [account],
     });
+  };
 
-    const dataStr = (data as BigNumber).toString();
-    const suceeds = ethers.utils.formatUnits(dataStr, "ether");
-    console.log(suceeds);
-    setProceeds(suceeds);
-  }
+  const handleWithdraw = () => {
+    withDrawProceeds({
+      abi: NFTMarketPlaceJson.abi,
+      address: nftMarketAddr as `0x${string}`,
+      functionName: "withDrawProceeds",
+    });
+  };
 
-  const { write: withDrawProceeds } = useContractWrite({
-    abi: nftMarketplaceAbi,
-    address: marketplaceAddress as `0x${string}`,
-    account: account,
-    functionName: "withDrawProceeds",
-    args: [],
-    onError: (error) => console.log(error),
-    async onSuccess(data) {
-      const receipt = await waitForTransaction(data);
-      if (receipt.status === "success") {
-        handleWithdrawSuccess();
-      }
-    },
-  });
-
+  // 获取用户的可以取出的总金额
   useEffect(() => {
-    const network = (networkMapping as NetworkMapping)[chainId.toString()];
-    if (
-      network &&
-      network.NftMarketplace &&
-      network.NftMarketplace.length > 0
-    ) {
-      const marketplaceAddr = network.NftMarketplace[0];
-      console.log("marketplaceAddr", marketplaceAddr);
-      setMarketPlaceAddress(marketplaceAddr);
-
-      if (isConnected) {
-        setupUI(marketplaceAddr);
-      }
+    if (isConnected) {
+      fetchProceeds();
     } else {
-      setMarketPlaceAddress("");
+      setProceeds("0");
+      dispatch({
+        type: "warning",
+        message: "Wallet is not connected",
+        position: "topR",
+      });
     }
   }, [proceeds, account, isConnected, chainId]);
 
   return (
     <>
       {marketplaceAddress && marketplaceAddress.trim() ? (
+        // 授权给NFT市场并且挂出
         <div className={styles.container}>
           <Form
             onSubmit={approveAndList}
             data={[
-              {
-                name: "NFT Address",
-                type: "text",
-                inputWidth: "50%",
-                value: "",
-                key: "nftAddress",
-              },
               {
                 name: "Token ID",
                 type: "number",
@@ -194,14 +158,7 @@ export default function Home() {
           {proceeds != "0.0" ? (
             <Button
               onClick={() => {
-                withDrawProceeds({
-                  //@ts-ignore
-                  abi: nftMarketplaceAbi,
-                  address: marketplaceAddress,
-                  account: account,
-                  functionName: "withDrawProceeds",
-                  args: [],
-                });
+                handleWithdraw();
               }}
               text="Withdraw"
               type="button"

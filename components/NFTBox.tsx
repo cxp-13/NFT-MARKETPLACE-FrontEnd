@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import nftMarketPlaceAbi from "../constants/NftMarketplace.abi.json";
-import nftAbi from "../constants/BasicNft.abi.json";
+
+import BasicNFTJson from "../constants/BasicNft.json";
+import NFTMarketPlaceJson from "../constants/NFTMarketPlace.json";
 import Image from "next/image";
 import {
   Card,
@@ -9,10 +10,14 @@ import {
 } from "@web3uikit/core";
 import { UpdateListingModal } from "./UpdateListingProps";
 
-import { useAccount, useChainId, useContractWrite } from "wagmi";
+import {
+  useAccount,
+  useChainId,
+  useContractWrite,
+  useWriteContract,
+} from "wagmi";
 import { ethers } from "ethers";
 import api from "@/utils/api";
-import { waitForTransaction } from "@wagmi/core";
 
 const truncateStr = (fullStr: string, strLen: number) => {
   if (fullStr.length <= strLen) return fullStr;
@@ -33,14 +38,12 @@ export default function NFTBox({
   price,
   nftAddress,
   tokenId,
-  marketPlaceAddress,
   seller,
   getListedNfts,
 }: {
   price: string;
-  nftAddress: string;
+  nftAddress: `0x${string}`;
   tokenId: number;
-  marketPlaceAddress: string;
   seller: string;
   getListedNfts: Function;
 }) {
@@ -57,11 +60,13 @@ export default function NFTBox({
   const hideModal = () => setShowModal(false);
 
   async function updateUI() {
-    // const hexadecimalString = "0x" + tokenId.toString(16);
+    let chainName = "";
     const respData = await api.getNFTMetaData(
       nftAddress,
-      parseInt(tokenId.toString(), 16).toString(),
-      "0x" + chainId.toString(16)
+      // parseInt(tokenId.toString(), 16).toString(),
+      tokenId.toString(),
+      // "0x" + chainId.toString(16)
+      chainName
     );
     const metadata = respData.data.normalized_metadata;
     setImageURI(metadata.image);
@@ -87,55 +92,85 @@ export default function NFTBox({
     }
   }, [isConnected]);
 
-  const {
-    data,
-    isLoading,
-    isSuccess,
-    write: buyItems,
-  } = useContractWrite({
-    address: marketPlaceAddress as `0x${string}`,
-    abi: nftMarketPlaceAbi,
-    functionName: "buyItem",
-    account: address,
-    args: [nftAddress, tokenId],
-    value: ethers.utils.parseUnits(price, "wei").toBigInt(),
-    onError(error) {
-      console.log(error);
-    },
-    async onSettled(hash, error, variables, context) {
-      if (hash) {
-        const recriptTx = await waitForTransaction(hash);
-        dispatch({
-          type: "success",
-          message: "Item bought!",
-          title: "Item Bought",
-          position: "topR",
-        });
-        if (recriptTx.status === "success") {
-          await getListedNfts();
-        }
-      } else {
-        dispatch({
-          type: "error",
-          message: "Item bought Fail!",
-          title: "Item Bought Fail",
-          position: "topR",
-        });
-      }
-    },
-    // onSuccess() {
-    //   dispatch({
-    //     type: "success",
-    //     message: "Item bought!",
-    //     title: "Item Bought",
-    //     position: "topR",
-    //   });
-    // },
-  });
+  const { writeContract: buyItem } = useWriteContract();
+
+  // const {
+  //   data,
+  //   isLoading,
+  //   isSuccess,
+  //   write: buyItems,
+  // } = useContractWrite({
+  //   address: marketPlaceAddress as `0x${string}`,
+  //   abi: nftMarketPlaceAbi,
+  //   functionName: "buyItem",
+  //   account: address,
+  //   args: [nftAddress, tokenId],
+  //   value: ethers.utils.parseUnits(price, "wei").toBigInt(),
+  //   onError(error) {
+  //     console.log(error);
+  //   },
+  //   async onSettled(hash, error, variables, context) {
+  //     if (hash) {
+  //       const recriptTx = await waitForTransaction(hash);
+  //       dispatch({
+  //         type: "success",
+  //         message: "Item bought!",
+  //         title: "Item Bought",
+  //         position: "topR",
+  //       });
+  //       if (recriptTx.status === "success") {
+  //         await getListedNfts();
+  //       }
+  //     } else {
+  //       dispatch({
+  //         type: "error",
+  //         message: "Item bought Fail!",
+  //         title: "Item Bought Fail",
+  //         position: "topR",
+  //       });
+  //     }
+  //   },
+  //   onSuccess() {
+  //     dispatch({
+  //       type: "success",
+  //       message: "Item bought!",
+  //       title: "Item Bought",
+  //       position: "topR",
+  //     });
+  //   },
+  // });
 
   const handleCardClick = async () => {
-    isOwnedByUser ? setShowModal(true) : buyItems();
+    isOwnedByUser
+      ? setShowModal(true)
+      : buyItem(
+          {
+            address: nftAddress,
+            abi: NFTMarketPlaceJson.abi,
+            functionName: "buyItem",
+            args: [nftAddress, tokenId],
+          },
+          {
+            onSuccess() {
+              dispatch({
+                type: "success",
+                message: "Item bought!",
+                title: "Item Bought",
+                position: "topR",
+              });
+            },
+            onError(error, variables, context) {
+              dispatch({
+                type: "error",
+                message: `Item bought Fail! ${error}`,
+                title: "Item Bought Fail",
+                position: "topR",
+              });
+            },
+          }
+        );
   };
+
   const isOwnedByUser =
     seller === address?.toLocaleLowerCase() || seller === undefined;
 

@@ -1,38 +1,29 @@
 import type { AppProps } from "next/app";
-import { getDefaultWallets, RainbowKitProvider } from "@rainbow-me/rainbowkit";
-import { createConfig, configureChains, WagmiConfig } from "wagmi";
+import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
+import { http, createConfig, WagmiProvider } from "wagmi";
 import { mainnet, sepolia, polygonMumbai, polygon, goerli } from "wagmi/chains";
-import { publicProvider } from "wagmi/providers/public";
 import "@rainbow-me/rainbowkit/styles.css";
 import "../styles/globals.css";
-import { infuraProvider } from "@wagmi/core/providers/infura";
 import Header from "@/components/Header";
 import Head from "next/head";
 //@ts-ignore
 import { NotificationProvider } from "@web3uikit/core";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const infuraApiKey = process.env.NEXT_PUBLIC_INFURA_API_KEY!;
-const walletConnectProjectId =
-  process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID!;
 
-const { chains, publicClient, webSocketPublicClient } = configureChains(
-  [mainnet, sepolia, polygonMumbai, polygon, goerli],
-  [publicProvider()]
-  // [infuraProvider({ apiKey: infuraApiKey })]
-);
-
-const { connectors } = getDefaultWallets({
-  appName: "My RainbowKit App",
-  projectId: walletConnectProjectId,
-  chains,
+export const config = getDefaultConfig({
+  appName: "NFT MarketPlace",
+  projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID as string,
+  chains: [mainnet, sepolia],
+  transports: {
+    [mainnet.id]: http(),
+    [sepolia.id]: http(),
+  },
 });
 
-const config = createConfig({
-  autoConnect: true,
-  publicClient,
-  webSocketPublicClient,
-  connectors,
-});
+const queryClient = new QueryClient();
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -42,14 +33,16 @@ export default function App({ Component, pageProps }: AppProps) {
         <meta name="description" content="NFT Market"></meta>
         <link rel="icon" href="./favicon.ico"></link>
       </Head>
-      <WagmiConfig config={config}>
-        <RainbowKitProvider chains={chains}>
-          <NotificationProvider>
-            <Header></Header>;
-            <Component {...pageProps} />{" "}
-          </NotificationProvider>
-        </RainbowKitProvider>
-      </WagmiConfig>
+      <WagmiProvider config={config}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitProvider>
+            <NotificationProvider>
+              <Header></Header>;
+              <Component {...pageProps} />{" "}
+            </NotificationProvider>
+          </RainbowKitProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
     </div>
   );
 }

@@ -22,6 +22,7 @@ class Api {
       });
       return response.data;
     } catch (error) {
+      console.error("Error fetching NFT metadata:", error);
       throw error;
     }
   }
@@ -38,6 +39,7 @@ class Api {
       });
       return response.data;
     } catch (error) {
+      console.error("Error fetching listed NFTs:", error);
       throw error;
     }
   }
