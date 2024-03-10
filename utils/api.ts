@@ -37,6 +37,7 @@ class Api {
       const response = await axios.get(url, {
         params: { page, pageSize },
       });
+      console.log("getListedNftPage res:", response);
       return response.data;
     } catch (error) {
       console.error("Error fetching listed NFTs:", error);

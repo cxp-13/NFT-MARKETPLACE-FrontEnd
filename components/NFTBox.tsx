@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 
-import BasicNFTJson from "../constants/BasicNft.json";
 import NFTMarketPlaceJson from "../constants/NFTMarketPlace.json";
 import Image from "next/image";
 import {
@@ -8,20 +7,20 @@ import {
   useNotification,
   //@ts-ignore
 } from "@web3uikit/core";
-import { UpdateListingModal } from "./UpdateListingProps";
-
+import { UpdateListingModal } from "./UpdateListingModal";
 import {
   useAccount,
   useChainId,
-  useContractWrite,
+  useReadContract,
   useWriteContract,
 } from "wagmi";
 import { ethers } from "ethers";
 import api from "@/utils/api";
+import config from "@/utils/config";
+import BasicNftJson from "../constants/BasicNFT.json";
 
 const truncateStr = (fullStr: string, strLen: number) => {
   if (fullStr.length <= strLen) return fullStr;
-
   const separator = "...";
   const seperatorLength = separator.length;
   const charsToShow = strLen - seperatorLength;
@@ -47,45 +46,33 @@ export default function NFTBox({
   seller: string;
   getListedNfts: Function;
 }) {
+  let nftAddr = process.env.NEXT_PUBLIC_NFT_ADDRESS;
+  let nftMarketAddr = process.env.NEXT_PUBLIC_NFT_MARKET_ADDRESS;
+
   const [imageURI, setImageURI] = useState("");
   const [tokenName, setTokenName] = useState("");
   const [tokenDescription, setTokenDescription] = useState("");
   const [showModal, setShowModal] = useState(false);
-
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-
   const dispatch = useNotification();
-
   const hideModal = () => setShowModal(false);
 
   async function updateUI() {
-    let chainName = "";
+    console.log("chainId", chainId.toString(16));
+    console.log("nftAddress", nftAddress);
     const respData = await api.getNFTMetaData(
       nftAddress,
-      // parseInt(tokenId.toString(), 16).toString(),
       tokenId.toString(),
-      // "0x" + chainId.toString(16)
-      chainName
+      "0x" + chainId.toString(16)
     );
+    console.log("获取NFT元数据：respData：", respData);
     const metadata = respData.data.normalized_metadata;
     setImageURI(metadata.image);
     setTokenName(metadata.name);
     setTokenDescription(metadata.description);
   }
 
-  // const handleNewNotification = (
-  //   type: "success",
-  //   icon?: React.ReactElement
-  // ) => {
-  //   dispatch({
-  //     type,
-  //     message: "Somebody messaged you",
-  //     title: "New Notification",
-  //     icon,
-  //     position: "topR",
-  //   });
-  // };
   useEffect(() => {
     if (isConnected) {
       updateUI();
@@ -94,70 +81,29 @@ export default function NFTBox({
 
   const { writeContract: buyItem } = useWriteContract();
 
-  // const {
-  //   data,
-  //   isLoading,
-  //   isSuccess,
-  //   write: buyItems,
-  // } = useContractWrite({
-  //   address: marketPlaceAddress as `0x${string}`,
-  //   abi: nftMarketPlaceAbi,
-  //   functionName: "buyItem",
-  //   account: address,
-  //   args: [nftAddress, tokenId],
-  //   value: ethers.utils.parseUnits(price, "wei").toBigInt(),
-  //   onError(error) {
-  //     console.log(error);
-  //   },
-  //   async onSettled(hash, error, variables, context) {
-  //     if (hash) {
-  //       const recriptTx = await waitForTransaction(hash);
-  //       dispatch({
-  //         type: "success",
-  //         message: "Item bought!",
-  //         title: "Item Bought",
-  //         position: "topR",
-  //       });
-  //       if (recriptTx.status === "success") {
-  //         await getListedNfts();
-  //       }
-  //     } else {
-  //       dispatch({
-  //         type: "error",
-  //         message: "Item bought Fail!",
-  //         title: "Item Bought Fail",
-  //         position: "topR",
-  //       });
-  //     }
-  //   },
-  //   onSuccess() {
-  //     dispatch({
-  //       type: "success",
-  //       message: "Item bought!",
-  //       title: "Item Bought",
-  //       position: "topR",
-  //     });
-  //   },
-  // });
-
   const handleCardClick = async () => {
+    console.log(ethers.parseUnits(price, "wei"));
+    
+
     isOwnedByUser
       ? setShowModal(true)
       : buyItem(
           {
-            address: nftAddress,
+            address: nftMarketAddr as `0x${string}`,
             abi: NFTMarketPlaceJson.abi,
             functionName: "buyItem",
-            args: [nftAddress, tokenId],
+            args: [nftAddress, tokenId.toString()],
+            value: ethers.parseUnits(price, "wei"),
           },
           {
-            onSuccess() {
+            async onSuccess() {
               dispatch({
                 type: "success",
                 message: "Item bought!",
                 title: "Item Bought",
                 position: "topR",
               });
+              await getListedNfts();
             },
             onError(error, variables, context) {
               dispatch({
@@ -185,12 +131,10 @@ export default function NFTBox({
             <UpdateListingModal
               isVisible={showModal}
               tokenId={tokenId}
-              marketPlaceAddress={marketPlaceAddress}
               nftAddress={nftAddress}
               onClose={hideModal}
               imageURI={imageURI}
-              nftMarketPlaceAbi={nftMarketPlaceAbi}
-              currentPrice={ethers.utils.formatUnits(price, "ether")}
+              currentPrice={ethers.formatUnits(price, "ether")}
               refreshNftPage={getListedNfts}
             />
             <Card
@@ -212,7 +156,7 @@ export default function NFTBox({
                     width="200"
                   />
                   <div className="font-bold">
-                    {ethers.utils.formatUnits(price, "ether")} ETH
+                    {ethers.formatUnits(price, "ether")} ETH
                   </div>
                 </div>
               </div>

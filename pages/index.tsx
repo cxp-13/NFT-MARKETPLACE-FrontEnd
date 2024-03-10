@@ -44,6 +44,7 @@ export default function Page() {
           listedNfts && listedNfts.length > 0 ? (
             listedNfts.map((nft) => {
               console.log(nft);
+              
               const { price, nftAddress, tokenId, seller } =
                 nft;
               return (

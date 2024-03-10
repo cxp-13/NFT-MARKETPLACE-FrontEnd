@@ -1,26 +1,21 @@
+"use client";
 import styles from "../styles/Home.module.css";
 //@ts-ignore
 import { Form, useNotification, Button } from "@web3uikit/core";
-import { ethers } from "ethers";
+import { ethers, toNumber } from "ethers";
 import { useEffect, useState } from "react";
-import {
-  useAccount,
-  useChainId,
-  useWriteContract,
-} from "wagmi";
+import { useAccount, useChainId, useWriteContract } from "wagmi";
 import { readContract } from "@wagmi/core";
-import { config } from "./_app";
 import BasicNFTJson from "../constants/BasicNft.json";
 import NFTMarketPlaceJson from "../constants/NFTMarketPlace.json";
+import config from "@/utils/config";
 
 export default function Home() {
   const nftMarketAddr = process.env.NEXT_PUBLIC_NFT_MARKET_ADDRESS;
   const nftAddr = process.env.NEXT_PUBLIC_NFT_ADDRESS;
-
-  const [marketplaceAddress, setMarketPlaceAddress] = useState("");
-  const [nftPrice, setNftPrice] = useState("");
+  // const [marketplaceAddress, setMarketPlaceAddress] = useState("");
+  let marketplaceAddress = process.env.NEXT_PUBLIC_NFT_MARKET_ADDRESS;
   const { address: account, isConnected } = useAccount();
-
   let chainId = useChainId();
   const dispatch = useNotification();
   const [proceeds, setProceeds] = useState("0");
@@ -32,15 +27,14 @@ export default function Home() {
   const { writeContract: withDrawProceeds } = useWriteContract();
 
   async function approveAndList(data: any) {
-    // { id: string, data: [{inputName: string; inputResult: string[] | string;}]}
-    // console.log("Approving...");
-    // const nftAddress = data.data[0].inputResult;
-    // const tokenId = data.data[1].inputResult;
-    // setNftPrice(price);
+    console.log("approveAndList-data", data);
 
     let tokenId = data.data[0].inputResult;
     let nftPrice = data.data[1].inputResult;
-    nftPrice = ethers.parseUnits(data.data[2].inputResult, "ether");
+    nftPrice = ethers.parseEther(nftPrice);
+    tokenId = Number(tokenId);
+    console.log("approveAndList-tokenId", tokenId);
+
     // 授权
     approve(
       {
@@ -52,13 +46,15 @@ export default function Home() {
       {
         onSuccess: () => {
           // 挂单
+          console.log("授权成功");
           handleApproveSuccess(tokenId, nftPrice);
         },
         onError(error, variables, context) {
           console.log("授权onError", error);
+
         },
         onSettled(data, error, variables, context) {
-          console.log("授权onSettled");
+          console.log("授权onSettled", "data:", data, "error:", error);
         },
       }
     );
@@ -70,11 +66,12 @@ export default function Home() {
       {
         abi: NFTMarketPlaceJson.abi,
         address: nftMarketAddr as `0x${string}`,
-        functionName: "approve",
-        args: [nftAddr, price, tokenId],
+        functionName: "listItem",
+        args: [nftAddr, Number(price), Number(tokenId)],
       },
       {
         onSuccess: () => {
+          console.log("listNft-onSuccess");
           handleListSuccess();
         },
       }
@@ -106,6 +103,8 @@ export default function Home() {
       functionName: "getProceeds",
       args: [account],
     });
+    console.log("result", result);
+    setProceeds(ethers.formatEther(result as bigint));
   };
 
   const handleWithdraw = () => {

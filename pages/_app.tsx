@@ -2,7 +2,7 @@ import type { AppProps } from "next/app";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { http, createConfig, WagmiProvider } from "wagmi";
-import { mainnet, sepolia, polygonMumbai, polygon, goerli } from "wagmi/chains";
+import { mainnet, sepolia, localhost } from "wagmi/chains";
 import "@rainbow-me/rainbowkit/styles.css";
 import "../styles/globals.css";
 import Header from "@/components/Header";
@@ -13,13 +13,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const infuraApiKey = process.env.NEXT_PUBLIC_INFURA_API_KEY!;
 
-export const config = getDefaultConfig({
+const config = getDefaultConfig({
   appName: "NFT MarketPlace",
   projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID as string,
-  chains: [mainnet, sepolia],
+  chains: [sepolia, localhost],
   transports: {
-    [mainnet.id]: http(),
     [sepolia.id]: http(),
+    [localhost.id]: http(),
   },
 });
 
@@ -37,7 +37,7 @@ export default function App({ Component, pageProps }: AppProps) {
         <QueryClientProvider client={queryClient}>
           <RainbowKitProvider>
             <NotificationProvider>
-              <Header></Header>;
+              <Header></Header>
               <Component {...pageProps} />{" "}
             </NotificationProvider>
           </RainbowKitProvider>
