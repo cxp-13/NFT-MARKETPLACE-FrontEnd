@@ -11,13 +11,12 @@ import { UpdateListingModal } from "./UpdateListingModal";
 import {
   useAccount,
   useChainId,
-  useReadContract,
   useWriteContract,
 } from "wagmi";
 import { ethers } from "ethers";
 import api from "@/utils/api";
-import config from "@/utils/config";
-import BasicNftJson from "../constants/BasicNFT.json";
+
+
 
 const truncateStr = (fullStr: string, strLen: number) => {
   if (fullStr.length <= strLen) return fullStr;
