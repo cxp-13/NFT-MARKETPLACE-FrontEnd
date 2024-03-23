@@ -25,6 +25,7 @@
 ├── viem@2.7.20
 └── wagmi@2.5.7
 ```
+架构图：![image](https://github.com/cxp-13/NFT-MARKETPLACE-FrontEnd/assets/84974164/579fcc5b-5c43-4bd3-8325-656997ad88a8)
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
