@@ -1,7 +1,4 @@
-原项目地址：https://github.com/TechPlanB/NFT-MARKETPLACE
-主要变更：
-1. 将web3uikit和wagmi的版本升级到最新，并更新了对应函数用法的更新。
-2. 该项目主要库的版本：
+The npm pkgs:
 ```hash
 ├── @rainbow-me/rainbowkit@2.0.1
 ├── @tanstack/react-query@5.25.0
@@ -25,7 +22,7 @@
 ├── viem@2.7.20
 └── wagmi@2.5.7
 ```
-架构图：![image](https://github.com/cxp-13/NFT-MARKETPLACE-FrontEnd/assets/84974164/579fcc5b-5c43-4bd3-8325-656997ad88a8)
+architecture diagram：![image](https://github.com/cxp-13/NFT-MARKETPLACE-FrontEnd/assets/84974164/579fcc5b-5c43-4bd3-8325-656997ad88a8)
 
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
